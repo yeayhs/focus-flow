@@ -708,6 +708,55 @@ function updateTimerDisplay() {
   document.getElementById('timer-display').textContent = `${m}:${s}`;
 }
 
+// ---------- Log a past task ----------
+document.getElementById('log-past-btn').addEventListener('click', () => {
+  document.getElementById('log-past-form').classList.remove('hidden');
+  document.getElementById('log-past-btn').classList.add('hidden');
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('past-completed-at').value = now.toISOString().slice(0, 16);
+});
+
+document.getElementById('cancel-log-past-btn').addEventListener('click', () => {
+  resetLogPastForm();
+});
+
+function resetLogPastForm() {
+  document.getElementById('log-past-form').reset();
+  document.getElementById('log-past-form').classList.add('hidden');
+  document.getElementById('log-past-btn').classList.remove('hidden');
+}
+
+document.getElementById('log-past-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const title = document.getElementById('past-title').value.trim();
+  const subject = document.getElementById('past-subject').value || null;
+  const completedAtValue = document.getElementById('past-completed-at').value;
+  const minutes = parseInt(document.getElementById('past-minutes').value, 10);
+  if (!title || !completedAtValue || !minutes || minutes <= 0) return;
+
+  const completedAt = new Date(completedAtValue).getTime();
+  const createdAt = completedAt - minutes * 60000;
+
+  tasks.push({
+    id: genId(),
+    title,
+    notes: '',
+    photos: [],
+    dueDate: null,
+    subject,
+    status: 'done',
+    createdAt,
+    completedAt,
+    timeSpentMinutes: minutes,
+    loggedRetroactively: true
+  });
+
+  save();
+  resetLogPastForm();
+  renderAll();
+});
+
 function renderHistory() {
   const list = document.getElementById('history-list');
   list.innerHTML = '';
@@ -727,7 +776,7 @@ function renderHistory() {
       ${thumbSrc ? `<img class="task-thumb" src="${thumbSrc}">` : ''}
       <div class="task-text">
         <div class="task-title">${getSubjectBadge(task.subject)}${escapeHtml(task.title)}</div>
-        <div class="task-date">Completed ${formatDate(task.completedAt)}</div>
+        <div class="task-date">Completed ${formatDate(task.completedAt)}${task.timeSpentMinutes ? ` · ${task.timeSpentMinutes} min` : ''}</div>
       </div>
       <button class="delete-btn" title="Delete">🗑️</button>
     `;
@@ -814,6 +863,7 @@ function showDetail(task) {
   document.getElementById('detail-notes').textContent = task.notes || '(no details)';
   let meta = `Added: ${formatDate(task.createdAt)}`;
   if (task.completedAt) meta += ` · Completed: ${formatDate(task.completedAt)}`;
+  if (task.timeSpentMinutes) meta += ` · Time spent: ${task.timeSpentMinutes} min`;
   document.getElementById('detail-meta').textContent = meta;
 
   renderPhotoGallery('detail-photo-gallery', getTaskPhotos(task));
