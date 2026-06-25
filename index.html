@@ -131,6 +131,9 @@
           <button type="button" id="past-time-unsure-btn" class="no-due-btn">Not Sure</button>
         </div>
         <label>Minutes spent: <input id="past-minutes" type="number" min="1" placeholder="e.g. 20" required></label>
+        <label id="past-photo-label" for="past-photo-input">📷 Add Photos (up to 10)</label>
+        <input id="past-photo-input" type="file" accept="image/*" capture="environment" multiple class="hidden">
+        <div id="past-photo-preview-gallery" class="photo-gallery"></div>
         <button type="submit">Add to History</button>
         <button type="button" id="cancel-log-past-btn">Cancel</button>
       </form>

@@ -790,6 +790,47 @@ function updateTimerDisplay() {
 
 // ---------- Log a past task ----------
 let editingHistoryId = null;
+let pendingPastPhotos = [];
+
+function renderPastPhotoPreviewGallery() {
+  const gallery = document.getElementById('past-photo-preview-gallery');
+  gallery.innerHTML = '';
+  pendingPastPhotos.forEach((src, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'photo-thumb-wrap';
+    wrap.innerHTML = `<img class="progress-thumb" src="${src}"><button type="button" class="remove-thumb-btn" data-i="${i}">×</button>`;
+    wrap.querySelector('.remove-thumb-btn').addEventListener('click', () => {
+      pendingPastPhotos.splice(i, 1);
+      renderPastPhotoPreviewGallery();
+    });
+    gallery.appendChild(wrap);
+  });
+}
+
+document.getElementById('past-photo-input').addEventListener('change', (e) => {
+  const files = Array.from(e.target.files);
+  const room = MAX_PHOTOS - pendingPastPhotos.length;
+  if (room <= 0) {
+    showAppAlert(`You can add up to ${MAX_PHOTOS} photos.`);
+    e.target.value = '';
+    return;
+  }
+  const filesToAdd = files.slice(0, room);
+  if (files.length > room) {
+    showAppAlert(`Only ${room} more photo${room === 1 ? '' : 's'} can be added (max ${MAX_PHOTOS}).`);
+  }
+  let remaining = filesToAdd.length;
+  filesToAdd.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      pendingPastPhotos.push(reader.result);
+      remaining--;
+      if (remaining === 0) renderPastPhotoPreviewGallery();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+});
 
 document.getElementById('log-past-btn').addEventListener('click', () => {
   document.getElementById('log-past-form').classList.remove('hidden');
@@ -811,6 +852,8 @@ function startEditHistoryTask(id) {
   document.getElementById('past-date').value = completed.toISOString().slice(0, 10);
   document.getElementById('past-time').value = completed.toTimeString().slice(0, 5);
   document.getElementById('past-minutes').value = task.timeSpentMinutes || '';
+  pendingPastPhotos = getTaskPhotos(task).slice();
+  renderPastPhotoPreviewGallery();
 
   const dateBtn = document.getElementById('past-date-unsure-btn');
   const timeBtn = document.getElementById('past-time-unsure-btn');
@@ -858,6 +901,8 @@ function resetLogPastForm() {
   document.getElementById('past-date-vague').classList.add('hidden');
   document.querySelector('#log-past-form button[type="submit"]').textContent = 'Add to History';
   editingHistoryId = null;
+  pendingPastPhotos = [];
+  renderPastPhotoPreviewGallery();
 }
 
 document.getElementById('log-past-form').addEventListener('submit', (e) => {
@@ -894,6 +939,8 @@ document.getElementById('log-past-form').addEventListener('submit', (e) => {
       task.timeSpentMinutes = minutes;
       task.timeApproximate = timeUnsure;
       task.dateApproximate = dateUnsure;
+      task.photos = pendingPastPhotos.slice();
+      delete task.photo;
     }
   } else {
     const createdAt = completedAt - minutes * 60000;
@@ -901,7 +948,7 @@ document.getElementById('log-past-form').addEventListener('submit', (e) => {
       id: genId(),
       title,
       notes: '',
-      photos: [],
+      photos: pendingPastPhotos.slice(),
       dueDate: null,
       subject,
       status: 'done',

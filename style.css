@@ -238,7 +238,7 @@ main {
   color: white;
 }
 
-#photo-label {
+#photo-label, #past-photo-label {
   display: inline-block;
   background: var(--lavender-light);
   color: var(--lavender-dark);
