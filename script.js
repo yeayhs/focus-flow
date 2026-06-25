@@ -13,6 +13,43 @@ document.getElementById('lightbox-close').addEventListener('click', (e) => {
   document.getElementById('lightbox').classList.add('hidden');
 });
 
+function showAppAlert(message) {
+  return new Promise((resolve) => {
+    const dialog = document.getElementById('app-dialog');
+    const cancelBtn = document.getElementById('app-dialog-cancel');
+    const okBtn = document.getElementById('app-dialog-ok');
+    document.getElementById('app-dialog-message').textContent = message;
+    cancelBtn.classList.add('hidden');
+    dialog.classList.remove('hidden');
+    const onOk = () => {
+      dialog.classList.add('hidden');
+      okBtn.removeEventListener('click', onOk);
+      resolve();
+    };
+    okBtn.addEventListener('click', onOk);
+  });
+}
+
+function showAppConfirm(message) {
+  return new Promise((resolve) => {
+    const dialog = document.getElementById('app-dialog');
+    const cancelBtn = document.getElementById('app-dialog-cancel');
+    const okBtn = document.getElementById('app-dialog-ok');
+    document.getElementById('app-dialog-message').textContent = message;
+    cancelBtn.classList.remove('hidden');
+    dialog.classList.remove('hidden');
+    const cleanup = () => {
+      dialog.classList.add('hidden');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+    };
+    const onOk = () => { cleanup(); resolve(true); };
+    const onCancel = () => { cleanup(); resolve(false); };
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+  });
+}
+
 function loadTasks() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -236,13 +273,13 @@ document.getElementById('task-photo').addEventListener('change', (e) => {
   const files = Array.from(e.target.files);
   const room = MAX_PHOTOS - pendingPhotos.length;
   if (room <= 0) {
-    alert(`You can add up to ${MAX_PHOTOS} photos.`);
+    showAppAlert(`You can add up to ${MAX_PHOTOS} photos.`);
     e.target.value = '';
     return;
   }
   const filesToAdd = files.slice(0, room);
   if (files.length > room) {
-    alert(`Only ${room} more photo${room === 1 ? '' : 's'} can be added (max ${MAX_PHOTOS}).`);
+    showAppAlert(`Only ${room} more photo${room === 1 ? '' : 's'} can be added (max ${MAX_PHOTOS}).`);
   }
   let remaining = filesToAdd.length;
   filesToAdd.forEach(file => {
@@ -353,6 +390,13 @@ function renderAll() {
   renderHistory();
   renderStats();
   renderExportReminder();
+  updateDemoDataButtons();
+}
+
+function updateDemoDataButtons() {
+  const hasDemo = tasks.some(t => t.isDemo);
+  document.getElementById('demo-data-btn').classList.toggle('hidden', hasDemo);
+  document.getElementById('remove-demo-data-btn').classList.toggle('hidden', !hasDemo);
 }
 
 let searchQuery = '';
@@ -510,7 +554,7 @@ function reorderPlanned(sourceId, targetId) {
 function startWorkingOn(id) {
   const hasActive = tasks.some(t => t.status === 'active');
   if (hasActive) {
-    alert('Finish or stop your current task first!');
+    showAppAlert('Finish or stop your current task first!');
     return;
   }
   const task = tasks.find(t => t.id === id);
@@ -598,13 +642,13 @@ function setupMultiPhotoUploader(inputId, photoField, galleryElementId, getTarge
 
     const room = MAX_PHOTOS - task[photoField].length;
     if (room <= 0) {
-      alert(`You can add up to ${MAX_PHOTOS} photos.`);
+      showAppAlert(`You can add up to ${MAX_PHOTOS} photos.`);
       e.target.value = '';
       return;
     }
     const filesToAdd = files.slice(0, room);
     if (files.length > room) {
-      alert(`Only ${room} more photo${room === 1 ? '' : 's'} can be added (max ${MAX_PHOTOS}).`);
+      showAppAlert(`Only ${room} more photo${room === 1 ? '' : 's'} can be added (max ${MAX_PHOTOS}).`);
     }
 
     let remaining = filesToAdd.length;
@@ -658,6 +702,10 @@ let breakStartedAt = null;
 let breakPlannedSeconds = 0;
 
 document.getElementById('start-break-btn').addEventListener('click', () => {
+  if (window.Notification && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
   const minutes = parseInt(document.getElementById('break-minutes').value, 10) || 10;
   timerSecondsLeft = minutes * 60;
   breakPlannedSeconds = timerSecondsLeft;
@@ -678,7 +726,10 @@ document.getElementById('start-break-btn').addEventListener('click', () => {
       stopAmbientMusic();
       playAlarm();
       logBreak(breakPlannedSeconds);
-      alert("Break's over! Time to get back to it.");
+      if (window.Notification && Notification.permission === 'granted') {
+        new Notification('Focus Flow', { body: "Break's over! Time to get back to it. 🎉" });
+      }
+      showAppAlert("Break's over! Time to get back to it.");
       activeUiMode = 'task';
       renderAll();
     }
@@ -738,12 +789,58 @@ function updateTimerDisplay() {
 }
 
 // ---------- Log a past task ----------
+let editingHistoryId = null;
+
 document.getElementById('log-past-btn').addEventListener('click', () => {
   document.getElementById('log-past-form').classList.remove('hidden');
   document.getElementById('log-past-btn').classList.add('hidden');
   const now = new Date();
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-  document.getElementById('past-completed-at').value = now.toISOString().slice(0, 16);
+  document.getElementById('past-date').value = now.toISOString().slice(0, 10);
+  document.getElementById('past-time').value = now.toTimeString().slice(0, 5);
+});
+
+function startEditHistoryTask(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  editingHistoryId = id;
+  document.getElementById('log-past-form').classList.remove('hidden');
+  document.getElementById('log-past-btn').classList.add('hidden');
+  document.getElementById('past-title').value = task.title;
+  document.getElementById('past-subject').value = task.subject || '';
+  const completed = new Date(task.completedAt);
+  document.getElementById('past-date').value = completed.toISOString().slice(0, 10);
+  document.getElementById('past-time').value = completed.toTimeString().slice(0, 5);
+  document.getElementById('past-minutes').value = task.timeSpentMinutes || '';
+
+  const dateBtn = document.getElementById('past-date-unsure-btn');
+  const timeBtn = document.getElementById('past-time-unsure-btn');
+  if (dateBtn.classList.contains('active') !== !!task.dateApproximate) dateBtn.click();
+  if (!task.dateApproximate && timeBtn.classList.contains('active') !== !!task.timeApproximate) timeBtn.click();
+
+  document.querySelector('#log-past-form button[type="submit"]').textContent = 'Update Task';
+  document.getElementById('log-past-form').scrollIntoView({ behavior: 'smooth' });
+}
+
+document.getElementById('past-date-unsure-btn').addEventListener('click', () => {
+  const btn = document.getElementById('past-date-unsure-btn');
+  const dateLabel = document.getElementById('past-date-label');
+  const dateVague = document.getElementById('past-date-vague');
+  const isActive = btn.classList.toggle('active');
+  dateLabel.classList.toggle('hidden', isActive);
+  dateVague.classList.toggle('hidden', !isActive);
+  if (isActive) {
+    // an unsure date implies an unsure time too
+    const timeBtn = document.getElementById('past-time-unsure-btn');
+    if (!timeBtn.classList.contains('active')) timeBtn.click();
+  }
+});
+
+document.getElementById('past-time-unsure-btn').addEventListener('click', () => {
+  const btn = document.getElementById('past-time-unsure-btn');
+  const timeInput = document.getElementById('past-time');
+  const isActive = btn.classList.toggle('active');
+  timeInput.disabled = isActive;
+  if (isActive) timeInput.value = '';
 });
 
 document.getElementById('cancel-log-past-btn').addEventListener('click', () => {
@@ -754,32 +851,68 @@ function resetLogPastForm() {
   document.getElementById('log-past-form').reset();
   document.getElementById('log-past-form').classList.add('hidden');
   document.getElementById('log-past-btn').classList.remove('hidden');
+  document.getElementById('past-time-unsure-btn').classList.remove('active');
+  document.getElementById('past-time').disabled = false;
+  document.getElementById('past-date-unsure-btn').classList.remove('active');
+  document.getElementById('past-date-label').classList.remove('hidden');
+  document.getElementById('past-date-vague').classList.add('hidden');
+  document.querySelector('#log-past-form button[type="submit"]').textContent = 'Add to History';
+  editingHistoryId = null;
 }
 
 document.getElementById('log-past-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const title = document.getElementById('past-title').value.trim();
   const subject = document.getElementById('past-subject').value || null;
-  const completedAtValue = document.getElementById('past-completed-at').value;
+  const dateUnsure = document.getElementById('past-date-unsure-btn').classList.contains('active');
+  const timeUnsure = document.getElementById('past-time-unsure-btn').classList.contains('active');
   const minutes = parseInt(document.getElementById('past-minutes').value, 10);
-  if (!title || !completedAtValue || !minutes || minutes <= 0) return;
 
-  const completedAt = new Date(completedAtValue).getTime();
-  const createdAt = completedAt - minutes * 60000;
+  let dateValue;
+  if (dateUnsure) {
+    const daysAgo = parseInt(document.getElementById('past-date-vague').value, 10);
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    dateValue = d.toISOString().slice(0, 10);
+  } else {
+    dateValue = document.getElementById('past-date').value;
+  }
 
-  tasks.push({
-    id: genId(),
-    title,
-    notes: '',
-    photos: [],
-    dueDate: null,
-    subject,
-    status: 'done',
-    createdAt,
-    completedAt,
-    timeSpentMinutes: minutes,
-    loggedRetroactively: true
-  });
+  const timeValue = timeUnsure ? '12:00' : document.getElementById('past-time').value;
+  if (!title || !dateValue || (!timeUnsure && !timeValue) || !minutes || minutes <= 0) return;
+
+  const completedAt = new Date(`${dateValue}T${timeValue || '12:00'}`).getTime();
+
+  if (editingHistoryId) {
+    const task = tasks.find(t => t.id === editingHistoryId);
+    if (task) {
+      const createdAt = completedAt - minutes * 60000;
+      task.title = title;
+      task.subject = subject;
+      task.completedAt = completedAt;
+      task.createdAt = createdAt;
+      task.timeSpentMinutes = minutes;
+      task.timeApproximate = timeUnsure;
+      task.dateApproximate = dateUnsure;
+    }
+  } else {
+    const createdAt = completedAt - minutes * 60000;
+    tasks.push({
+      id: genId(),
+      title,
+      notes: '',
+      photos: [],
+      dueDate: null,
+      subject,
+      status: 'done',
+      createdAt,
+      completedAt,
+      timeSpentMinutes: minutes,
+      timeApproximate: timeUnsure,
+      dateApproximate: dateUnsure,
+      loggedRetroactively: true
+    });
+  }
 
   save();
   resetLogPastForm();
@@ -805,11 +938,16 @@ function renderHistory() {
       ${thumbSrc ? `<img class="task-thumb" src="${thumbSrc}" alt="Photo for ${escapeHtml(task.title)}">` : ''}
       <div class="task-text">
         <div class="task-title">${getSubjectBadge(task.subject)}${escapeHtml(task.title)}</div>
-        <div class="task-date">Completed ${formatDate(task.completedAt)}${task.timeSpentMinutes ? ` · ${task.timeSpentMinutes} min` : ''}</div>
+        <div class="task-date">Completed ${(task.timeApproximate || task.dateApproximate) ? '~' : ''}${formatDate(task.completedAt)}${task.timeSpentMinutes ? ` · ${task.timeSpentMinutes} min` : ''}</div>
       </div>
+      <button class="edit-btn" title="Edit" aria-label="Edit ${escapeHtml(task.title)}">✏️</button>
       <button class="delete-btn" title="Delete" aria-label="Delete ${escapeHtml(task.title)}">🗑️</button>
     `;
     li.querySelector('.task-text').addEventListener('click', () => showDetail(task));
+    li.querySelector('.edit-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      startEditHistoryTask(task.id);
+    });
     li.querySelector('.select-box').addEventListener('click', e => e.stopPropagation());
     const thumb = li.querySelector('.task-thumb');
     if (thumb) {
@@ -863,16 +1001,16 @@ document.getElementById('undo-btn').addEventListener('click', () => {
 document.getElementById('delete-selected-btn').addEventListener('click', () => {
   const ids = Array.from(document.querySelectorAll('#history-list .select-box:checked')).map(cb => cb.dataset.id);
   if (ids.length === 0) {
-    alert('Check the tasks you want to delete first.');
+    showAppAlert('Check the tasks you want to delete first.');
     return;
   }
   deleteTasks(ids);
 });
 
-document.getElementById('delete-all-btn').addEventListener('click', () => {
+document.getElementById('delete-all-btn').addEventListener('click', async () => {
   const doneIds = tasks.filter(t => t.status === 'done').map(t => t.id);
   if (doneIds.length === 0) return;
-  if (confirm('Delete all history? This cannot be undone.')) {
+  if (await showAppConfirm('Delete all history? This cannot be undone.')) {
     deleteTasks(doneIds);
   }
 });
@@ -891,7 +1029,7 @@ function showDetail(task) {
   }
   document.getElementById('detail-notes').textContent = task.notes || '(no details)';
   let meta = `Added: ${formatDate(task.createdAt)}`;
-  if (task.completedAt) meta += ` · Completed: ${formatDate(task.completedAt)}`;
+  if (task.completedAt) meta += ` · Completed: ${(task.timeApproximate || task.dateApproximate) ? '~' : ''}${formatDate(task.completedAt)}`;
   if (task.timeSpentMinutes) meta += ` · Time spent: ${task.timeSpentMinutes} min`;
   document.getElementById('detail-meta').textContent = meta;
 
@@ -992,21 +1130,72 @@ document.getElementById('import-file').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const imported = JSON.parse(reader.result);
       if (!Array.isArray(imported)) throw new Error('Invalid file format');
-      if (confirm(`Import ${imported.length} tasks? This will replace your current data.`)) {
+      if (await showAppConfirm(`Import ${imported.length} tasks? This will replace your current data.`)) {
         tasks = imported;
         save();
         renderAll();
       }
     } catch (err) {
-      alert('That file could not be read as a backup. Make sure it\'s a file exported from this app.');
+      showAppAlert('That file could not be read as a backup. Make sure it\'s a file exported from this app.');
     }
   };
   reader.readAsText(file);
   e.target.value = '';
+});
+
+function buildDemoTasks() {
+  const now = Date.now();
+  const day = 86400000;
+  const isoDaysFromNow = (n) => new Date(now + n * day).toISOString().slice(0, 10);
+
+  return [
+    {
+      id: genId(), title: 'Math worksheet — fractions', notes: 'Pages 12-13, show all work', photos: [],
+      dueDate: isoDaysFromNow(1), subject: 'math', status: 'planned', createdAt: now, completedAt: null, isDemo: true
+    },
+    {
+      id: genId(), title: 'Read Chapter 5', notes: 'Take notes on main characters', photos: [],
+      dueDate: isoDaysFromNow(3), subject: 'english', status: 'planned', createdAt: now, completedAt: null, isDemo: true
+    },
+    {
+      id: genId(), title: 'Science fair project research', notes: '', photos: [],
+      dueDate: null, subject: 'science', status: 'planned', createdAt: now, completedAt: null, isDemo: true
+    },
+    {
+      id: genId(), title: 'History timeline poster', notes: 'Ancient Egypt unit', photos: [], progressPhotos: [],
+      dueDate: isoDaysFromNow(2), subject: 'history', status: 'active', createdAt: now, completedAt: null, isDemo: true
+    },
+    {
+      id: genId(), title: 'Spelling list practice', notes: '', photos: [], completedPhotos: [],
+      dueDate: null, subject: 'english', status: 'done',
+      createdAt: now - 2 * day, completedAt: now - 2 * day + 25 * 60000, timeSpentMinutes: 25, isDemo: true
+    },
+    {
+      id: genId(), title: 'Volcano diagram', notes: '', photos: [], completedPhotos: [],
+      dueDate: null, subject: 'science', status: 'done',
+      createdAt: now - 5 * day, completedAt: now - 5 * day + 40 * 60000, timeSpentMinutes: 40, isDemo: true
+    }
+  ];
+}
+
+document.getElementById('demo-data-btn').addEventListener('click', async () => {
+  if (await showAppConfirm('Load some sample demo tasks for showing off the app? These are clearly marked and easy to remove later.')) {
+    tasks.push(...buildDemoTasks());
+    save();
+    renderAll();
+  }
+});
+
+document.getElementById('remove-demo-data-btn').addEventListener('click', async () => {
+  if (await showAppConfirm('Remove all demo tasks? Your real tasks will not be affected.')) {
+    tasks = tasks.filter(t => !t.isDemo);
+    save();
+    renderAll();
+  }
 });
 
 function escapeHtml(str) {

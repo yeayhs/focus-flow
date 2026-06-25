@@ -113,7 +113,23 @@
           <option value="history">History</option>
           <option value="other">Other</option>
         </select>
-        <label>Completed on: <input id="past-completed-at" type="datetime-local" required></label>
+        <div class="past-completed-row">
+          <label id="past-date-label">Completed on: <input id="past-date" type="date" required></label>
+          <select id="past-date-vague" class="hidden">
+            <option value="0">Today</option>
+            <option value="1">Yesterday</option>
+            <option value="3">A few days ago</option>
+            <option value="7">About a week ago</option>
+            <option value="14">A couple weeks ago</option>
+            <option value="30">About a month ago</option>
+            <option value="90">A while ago</option>
+          </select>
+          <button type="button" id="past-date-unsure-btn" class="no-due-btn">Not Sure</button>
+        </div>
+        <div class="past-completed-row">
+          <label id="past-time-label">Time: <input id="past-time" type="time"></label>
+          <button type="button" id="past-time-unsure-btn" class="no-due-btn">Not Sure</button>
+        </div>
         <label>Minutes spent: <input id="past-minutes" type="number" min="1" placeholder="e.g. 20" required></label>
         <button type="submit">Add to History</button>
         <button type="button" id="cancel-log-past-btn">Cancel</button>
@@ -125,6 +141,8 @@
         <button id="export-btn">⬇️ Export Data</button>
         <button id="import-btn">⬆️ Import Data</button>
         <input id="import-file" type="file" accept="application/json" class="hidden">
+        <button id="demo-data-btn">🧪 Load Demo Data</button>
+        <button id="remove-demo-data-btn" class="hidden">🧹 Remove Demo Data</button>
       </div>
       <ul id="history-list" class="task-list"></ul>
     </section>
@@ -167,6 +185,17 @@
   <div id="undo-toast" class="hidden">
     <span id="undo-toast-text"></span>
     <button id="undo-btn">Undo</button>
+  </div>
+
+  <!-- APP DIALOG (styled alert/confirm) -->
+  <div id="app-dialog" class="modal hidden">
+    <div class="modal-content dialog-content">
+      <p id="app-dialog-message"></p>
+      <div id="app-dialog-buttons" class="dialog-buttons">
+        <button id="app-dialog-cancel" class="hidden">Cancel</button>
+        <button id="app-dialog-ok">OK</button>
+      </div>
+    </div>
   </div>
 
   <script src="script.js"></script>

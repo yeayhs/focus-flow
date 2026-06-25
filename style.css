@@ -227,6 +227,17 @@ main {
   color: white;
 }
 
+#demo-data-btn, #remove-demo-data-btn {
+  border: none;
+  padding: 12px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  background: var(--lavender-dark);
+  color: white;
+}
+
 #photo-label {
   display: inline-block;
   background: var(--lavender-light);
@@ -430,6 +441,49 @@ main {
   padding: 10px;
   border-radius: 8px;
   cursor: pointer;
+}
+
+.past-completed-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+#past-time-unsure-btn {
+  background: var(--lavender-dark);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#past-time-unsure-btn.active,
+#past-date-unsure-btn.active {
+  background: var(--aqua-dark);
+}
+
+#past-date-unsure-btn {
+  background: var(--lavender-dark);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#past-date-vague {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  background: white;
 }
 
 #history-actions {
@@ -656,6 +710,46 @@ main {
   background: none;
   font-size: 22px;
   cursor: pointer;
+}
+
+#app-dialog {
+  z-index: 2000;
+}
+
+.dialog-content {
+  text-align: center;
+}
+
+#app-dialog-message {
+  font-size: 17px;
+  color: #333;
+  margin: 0 0 20px 0;
+  line-height: 1.4;
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.dialog-buttons button {
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+#app-dialog-ok {
+  background: var(--lavender-dark);
+  color: white;
+}
+
+#app-dialog-cancel {
+  background: #eee;
+  color: #333;
 }
 
 @media (max-width: 600px) {
