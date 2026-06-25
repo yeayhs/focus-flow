@@ -382,13 +382,14 @@ function createPlannedTaskCard(task, options = {}) {
   }
 
   li.innerHTML = `
-    ${options.draggable ? '<span class="drag-handle" title="Drag to reorder">⠿</span>' : ''}
-    ${thumbSrc ? `<img class="task-thumb" src="${thumbSrc}">` : ''}
+    ${options.draggable ? '<span class="drag-handle" title="Drag to reorder" aria-hidden="true">⠿</span>' : ''}
+    ${thumbSrc ? `<img class="task-thumb" src="${thumbSrc}" alt="Photo for ${escapeHtml(task.title)}">` : ''}
     <div class="task-text">
       <div class="task-title">${getSubjectBadge(task.subject)}${escapeHtml(task.title)}</div>
       <div class="task-date ${due.className}">${due.text}</div>
     </div>
-    <button class="edit-btn" title="Edit">✏️</button>
+    <button class="edit-btn" title="Edit" aria-label="Edit ${escapeHtml(task.title)}">✏️</button>
+    <button class="delete-btn" title="Delete" aria-label="Delete ${escapeHtml(task.title)}">🗑️</button>
     <button class="start-btn">Start</button>
   `;
   li.querySelector('.task-title').addEventListener('click', () => showDetail(task));
@@ -402,6 +403,10 @@ function createPlannedTaskCard(task, options = {}) {
   li.querySelector('.edit-btn').addEventListener('click', (e) => {
     e.stopPropagation();
     startEditTask(task.id);
+  });
+  li.querySelector('.delete-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteTasks([task.id]);
   });
   li.querySelector('.start-btn').addEventListener('click', (e) => {
     e.stopPropagation();
@@ -546,6 +551,13 @@ function renderActive() {
     renderProgressGallery(task);
   }
 
+  if (activeUiMode === 'break-prompt' && lastCompletedTaskId) {
+    const completedTask = tasks.find(t => t.id === lastCompletedTaskId);
+    if (completedTask) {
+      renderPhotoGallery('completed-photo-gallery', completedTask.completedPhotos);
+    }
+  }
+
   taskBox.classList.toggle('hidden', activeUiMode !== 'task');
   breakPrompt.classList.toggle('hidden', activeUiMode !== 'break-prompt');
   breakRunning.classList.toggle('hidden', activeUiMode !== 'break-running');
@@ -554,11 +566,20 @@ function renderActive() {
 function renderPhotoGallery(elementId, photos) {
   const gallery = document.getElementById(elementId);
   gallery.innerHTML = '';
-  (photos || []).forEach(src => {
+  (photos || []).forEach((src, i) => {
     const img = document.createElement('img');
     img.src = src;
+    img.alt = `Photo ${i + 1}`;
     img.className = 'progress-thumb';
+    img.tabIndex = 0;
+    img.setAttribute('role', 'button');
     img.addEventListener('click', () => showLightbox(src));
+    img.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        showLightbox(src);
+      }
+    });
     gallery.appendChild(img);
   });
 }
@@ -567,45 +588,53 @@ function renderProgressGallery(task) {
   renderPhotoGallery('progress-photo-gallery', task.progressPhotos);
 }
 
-document.getElementById('progress-photo-input').addEventListener('change', (e) => {
-  const files = Array.from(e.target.files);
-  if (files.length === 0) return;
-  const task = tasks.find(t => t.status === 'active');
-  if (!task) return;
-  if (!task.progressPhotos) task.progressPhotos = [];
+function setupMultiPhotoUploader(inputId, photoField, galleryElementId, getTargetTask) {
+  document.getElementById(inputId).addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    const task = getTargetTask();
+    if (!task) return;
+    if (!task[photoField]) task[photoField] = [];
 
-  const room = MAX_PHOTOS - task.progressPhotos.length;
-  if (room <= 0) {
-    alert(`You can add up to ${MAX_PHOTOS} progress photos.`);
+    const room = MAX_PHOTOS - task[photoField].length;
+    if (room <= 0) {
+      alert(`You can add up to ${MAX_PHOTOS} photos.`);
+      e.target.value = '';
+      return;
+    }
+    const filesToAdd = files.slice(0, room);
+    if (files.length > room) {
+      alert(`Only ${room} more photo${room === 1 ? '' : 's'} can be added (max ${MAX_PHOTOS}).`);
+    }
+
+    let remaining = filesToAdd.length;
+    filesToAdd.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        task[photoField].push(reader.result);
+        remaining--;
+        if (remaining === 0) {
+          save();
+          renderPhotoGallery(galleryElementId, task[photoField]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
     e.target.value = '';
-    return;
-  }
-  const filesToAdd = files.slice(0, room);
-  if (files.length > room) {
-    alert(`Only ${room} more photo${room === 1 ? '' : 's'} can be added (max ${MAX_PHOTOS}).`);
-  }
-
-  let remaining = filesToAdd.length;
-  filesToAdd.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      task.progressPhotos.push(reader.result);
-      remaining--;
-      if (remaining === 0) {
-        save();
-        renderProgressGallery(task);
-      }
-    };
-    reader.readAsDataURL(file);
   });
-  e.target.value = '';
-});
+}
+
+setupMultiPhotoUploader('progress-photo-input', 'progressPhotos', 'progress-photo-gallery', () => tasks.find(t => t.status === 'active'));
+setupMultiPhotoUploader('completed-photo-input', 'completedPhotos', 'completed-photo-gallery', () => tasks.find(t => t.id === lastCompletedTaskId));
+
+let lastCompletedTaskId = null;
 
 document.getElementById('mark-done-btn').addEventListener('click', () => {
   const task = tasks.find(t => t.status === 'active');
   if (!task) return;
   task.status = 'done';
   task.completedAt = Date.now();
+  lastCompletedTaskId = task.id;
   save();
   activeUiMode = 'break-prompt';
   renderAll();
@@ -772,13 +801,13 @@ function renderHistory() {
     li.className = 'task-card done';
     const thumbSrc = getTaskPhotos(task)[0];
     li.innerHTML = `
-      <input type="checkbox" class="select-box" data-id="${task.id}">
-      ${thumbSrc ? `<img class="task-thumb" src="${thumbSrc}">` : ''}
+      <input type="checkbox" class="select-box" data-id="${task.id}" aria-label="Select ${escapeHtml(task.title)}">
+      ${thumbSrc ? `<img class="task-thumb" src="${thumbSrc}" alt="Photo for ${escapeHtml(task.title)}">` : ''}
       <div class="task-text">
         <div class="task-title">${getSubjectBadge(task.subject)}${escapeHtml(task.title)}</div>
         <div class="task-date">Completed ${formatDate(task.completedAt)}${task.timeSpentMinutes ? ` · ${task.timeSpentMinutes} min` : ''}</div>
       </div>
-      <button class="delete-btn" title="Delete">🗑️</button>
+      <button class="delete-btn" title="Delete" aria-label="Delete ${escapeHtml(task.title)}">🗑️</button>
     `;
     li.querySelector('.task-text').addEventListener('click', () => showDetail(task));
     li.querySelector('.select-box').addEventListener('click', e => e.stopPropagation());
@@ -870,12 +899,18 @@ function showDetail(task) {
 
   const progressSection = document.getElementById('detail-progress-section');
   if (task.progressPhotos && task.progressPhotos.length > 0) {
-    document.getElementById('detail-progress-heading').textContent =
-      task.status === 'done' ? 'Completed Photos' : 'In-Progress Photos';
     renderPhotoGallery('detail-progress-gallery', task.progressPhotos);
     progressSection.classList.remove('hidden');
   } else {
     progressSection.classList.add('hidden');
+  }
+
+  const completedSection = document.getElementById('detail-completed-section');
+  if (task.completedPhotos && task.completedPhotos.length > 0) {
+    renderPhotoGallery('detail-completed-gallery', task.completedPhotos);
+    completedSection.classList.remove('hidden');
+  } else {
+    completedSection.classList.add('hidden');
   }
 
   document.getElementById('detail-modal').classList.remove('hidden');
@@ -1032,6 +1067,52 @@ function renderStats() {
       <div class="stat-label">${c.label}</div>
     </div>
   `).join('');
+
+  renderSubjectStats(doneTasks);
+}
+
+function estimateMinutes(task) {
+  if (task.timeSpentMinutes) return task.timeSpentMinutes;
+  if (task.completedAt && task.createdAt) {
+    return Math.max(0, Math.round((task.completedAt - task.createdAt) / 60000));
+  }
+  return 0;
+}
+
+function renderSubjectStats(doneTasks) {
+  const container = document.getElementById('stats-subjects');
+  if (!container) return;
+
+  const bySubject = {};
+  doneTasks.forEach(t => {
+    const key = t.subject || 'other';
+    if (!bySubject[key]) bySubject[key] = { count: 0, minutes: 0 };
+    bySubject[key].count++;
+    bySubject[key].minutes += estimateMinutes(t);
+  });
+
+  const entries = Object.entries(bySubject).sort((a, b) => b[1].minutes - a[1].minutes);
+
+  if (entries.length === 0) {
+    container.innerHTML = '<div class="empty-msg">No completed tasks with a subject yet.</div>';
+    return;
+  }
+
+  const maxMinutes = Math.max(...entries.map(([, v]) => v.minutes), 1);
+
+  container.innerHTML = entries.map(([subject, v]) => {
+    const label = subject.charAt(0).toUpperCase() + subject.slice(1);
+    const barWidth = Math.round((v.minutes / maxMinutes) * 100);
+    return `
+      <div class="subject-stat-row">
+        <div class="subject-stat-label">${label}</div>
+        <div class="subject-stat-bar-track">
+          <div class="subject-stat-bar" style="width:${barWidth}%"></div>
+        </div>
+        <div class="subject-stat-value">${v.count} task${v.count === 1 ? '' : 's'} · ${v.minutes} min</div>
+      </div>
+    `;
+  }).join('');
 }
 
 // ---------- Keyboard shortcuts ----------

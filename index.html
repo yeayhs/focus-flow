@@ -74,6 +74,14 @@
 
       <div id="break-prompt" class="active-task hidden">
         <h2>Nice work! Take a break?</h2>
+
+        <div class="progress-photos">
+          <h3>📷 Add a Completed Photo (optional, up to 10)</h3>
+          <div id="completed-photo-gallery" class="photo-gallery"></div>
+          <label id="completed-photo-label" for="completed-photo-input">📷 Add Completed Photo</label>
+          <input id="completed-photo-input" type="file" accept="image/*" capture="environment" multiple class="hidden">
+        </div>
+
         <button id="no-break-btn">No Break</button>
         <div class="break-setup">
           <label>Break length (minutes): <input id="break-minutes" type="number" min="1" value="10"></label>
@@ -124,27 +132,33 @@
     <!-- STATS VIEW -->
     <section id="view-stats" class="view">
       <div id="stats-grid" class="stats-grid"></div>
+      <h3 class="section-heading-aqua">📚 By Subject</h3>
+      <div id="stats-subjects"></div>
     </section>
   </main>
 
   <!-- LIGHTBOX -->
   <div id="lightbox" class="modal hidden">
-    <button id="lightbox-close">×</button>
-    <img id="lightbox-img">
+    <button id="lightbox-close" aria-label="Close photo viewer">×</button>
+    <img id="lightbox-img" alt="Enlarged photo">
   </div>
 
   <!-- DETAIL MODAL -->
   <div id="detail-modal" class="modal hidden">
     <div class="modal-content">
-      <button id="close-modal">×</button>
+      <button id="close-modal" aria-label="Close task details">×</button>
       <h2 id="detail-title"></h2>
       <p id="detail-due" class="due-label"></p>
       <div id="detail-photo-gallery" class="photo-gallery"></div>
       <p id="detail-notes"></p>
       <p id="detail-meta"></p>
       <div id="detail-progress-section" class="progress-photos hidden">
-        <h3 id="detail-progress-heading">Completed Photos</h3>
+        <h3>In-Progress Photos</h3>
         <div id="detail-progress-gallery" class="photo-gallery"></div>
+      </div>
+      <div id="detail-completed-section" class="progress-photos hidden">
+        <h3>Completed Photos</h3>
+        <div id="detail-completed-gallery" class="photo-gallery"></div>
       </div>
     </div>
   </div>

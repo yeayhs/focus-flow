@@ -20,10 +20,15 @@ header {
   background: var(--lavender-dark);
   color: white;
   padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
 }
 
 header h1 {
-  margin: 0 0 14px 0;
+  margin: 0;
   font-size: 24px;
   display: flex;
   align-items: center;
@@ -38,6 +43,7 @@ header h1 {
 
 nav {
   display: flex;
+  align-items: center;
   gap: 10px;
 }
 
@@ -519,7 +525,7 @@ main {
   border: 2px solid var(--lavender-light);
 }
 
-#progress-photo-label {
+#progress-photo-label, #completed-photo-label {
   display: inline-block;
   background: var(--lavender-light);
   color: var(--lavender-dark);
@@ -659,7 +665,7 @@ main {
   header h1 { font-size: 20px; }
   #app-logo { width: 26px; height: 26px; }
 
-  nav { flex-wrap: wrap; gap: 8px; }
+  nav { flex: 1 0 100%; flex-wrap: wrap; gap: 8px; }
   .tab { padding: 8px 14px; font-size: 14px; flex: 1; }
 
   main { width: 100%; padding: 0 12px; margin: 16px auto; }
@@ -721,6 +727,12 @@ main {
   margin: 0 0 10px 0;
 }
 
+.section-heading-aqua {
+  font-size: 16px;
+  color: var(--aqua-dark);
+  margin: 0 0 10px 0;
+}
+
 #today-section .task-list {
   margin-bottom: 0;
 }
@@ -765,4 +777,42 @@ main {
   font-size: 13px;
   color: #888;
   margin-top: 4px;
+}
+
+#stats-subjects {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.subject-stat-row {
+  background: white;
+  border-radius: 10px;
+  padding: 14px 18px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.subject-stat-label {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.subject-stat-bar-track {
+  background: #eee;
+  border-radius: 6px;
+  height: 10px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.subject-stat-bar {
+  height: 100%;
+  border-radius: 6px;
+  background: var(--aqua);
+}
+
+.subject-stat-value {
+  font-size: 13px;
+  color: #888;
 }
