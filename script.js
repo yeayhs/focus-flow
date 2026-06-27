@@ -471,7 +471,10 @@ function renderPlanned() {
     planned.length === 0 ? '' : `📋 ${planned.length} task${planned.length === 1 ? '' : 's'} planned`;
 
   if (searchQuery) {
-    planned = planned.filter(t => t.title.toLowerCase().includes(searchQuery));
+    planned = planned.filter(t =>
+      t.title.toLowerCase().includes(searchQuery) ||
+      (t.notes && t.notes.toLowerCase().includes(searchQuery))
+    );
   }
 
   planned = sortPlanned(planned);
@@ -560,6 +563,10 @@ function startWorkingOn(id) {
   const task = tasks.find(t => t.id === id);
   task.status = 'active';
   save();
+  if (!workTimerInterval) {
+    document.getElementById('work-timer-setup').classList.remove('hidden');
+    document.getElementById('work-timer-show-btn').classList.add('hidden');
+  }
   document.querySelector('.tab[data-view="active"]').click();
 }
 
@@ -683,6 +690,66 @@ document.getElementById('mark-done-btn').addEventListener('click', () => {
   activeUiMode = 'break-prompt';
   renderAll();
   showCelebration();
+});
+
+// ---------- Work timer ----------
+let workTimerInterval = null;
+let workTimerSecondsLeft = 0;
+
+function resetWorkTimerUI() {
+  clearInterval(workTimerInterval);
+  workTimerInterval = null;
+  document.getElementById('work-timer-setup').classList.remove('hidden');
+  document.getElementById('work-timer-running').classList.add('hidden');
+  document.getElementById('work-timer-show-btn').classList.add('hidden');
+}
+
+function updateWorkTimerDisplay() {
+  const m = Math.floor(workTimerSecondsLeft / 60).toString().padStart(2, '0');
+  const s = (workTimerSecondsLeft % 60).toString().padStart(2, '0');
+  document.getElementById('work-timer-display').textContent = `${m}:${s}`;
+}
+
+document.getElementById('start-work-timer-btn').addEventListener('click', () => {
+  if (window.Notification && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  const minutes = parseInt(document.getElementById('work-minutes').value, 10) || 30;
+  workTimerSecondsLeft = minutes * 60;
+  document.getElementById('work-timer-setup').classList.add('hidden');
+  document.getElementById('work-timer-running').classList.remove('hidden');
+  document.getElementById('work-timer-show-btn').classList.add('hidden');
+  updateWorkTimerDisplay();
+
+  workTimerInterval = setInterval(() => {
+    workTimerSecondsLeft--;
+    updateWorkTimerDisplay();
+    if (workTimerSecondsLeft <= 0) {
+      clearInterval(workTimerInterval);
+      workTimerInterval = null;
+      playAlarm();
+      if (window.Notification && Notification.permission === 'granted') {
+        new Notification('Focus Flow', { body: "Time's up! Take a break if you need one — done or not. 🎉" });
+      }
+      showAppAlert("Time's up! You can take a break now, whether you're done or not.");
+      resetWorkTimerUI();
+    }
+  }, 1000);
+});
+
+document.getElementById('stop-work-timer-btn').addEventListener('click', () => {
+  resetWorkTimerUI();
+});
+
+document.getElementById('work-timer-not-needed-btn').addEventListener('click', () => {
+  document.getElementById('work-timer-setup').classList.add('hidden');
+  document.getElementById('work-timer-show-btn').classList.remove('hidden');
+});
+
+document.getElementById('work-timer-show-btn').addEventListener('click', () => {
+  document.getElementById('work-timer-show-btn').classList.add('hidden');
+  document.getElementById('work-timer-setup').classList.remove('hidden');
 });
 
 function showCelebration() {

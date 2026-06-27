@@ -62,6 +62,22 @@
         <div id="active-photo-gallery" class="photo-gallery"></div>
         <p id="active-notes"></p>
 
+        <div id="work-timer-setup" class="work-timer">
+          <h3>⏱️ Work Timer</h3>
+          <p class="work-timer-hint">Set a timer so you know when to take a break, even if you're not done.</p>
+          <label>Work for (minutes): <input id="work-minutes" type="number" min="1" value="30"></label>
+          <button id="start-work-timer-btn" type="button">Start Work Timer</button>
+          <button id="work-timer-not-needed-btn" type="button">Not Needed</button>
+        </div>
+
+        <div id="work-timer-running" class="work-timer hidden">
+          <h3>⏱️ Working...</h3>
+          <div id="work-timer-display">30:00</div>
+          <button id="stop-work-timer-btn" type="button">Stop Timer</button>
+        </div>
+
+        <button id="work-timer-show-btn" type="button" class="hidden">⏱️ Add a Work Timer</button>
+
         <div class="progress-photos">
           <h3 id="active-photos-heading">In-Progress Photos</h3>
           <div id="progress-photo-gallery" class="photo-gallery"></div>

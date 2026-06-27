@@ -652,6 +652,95 @@ main {
   font-size: 16px;
 }
 
+.work-timer {
+  background: var(--lavender-light);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 18px 0;
+}
+
+.work-timer h3 {
+  margin: 0 0 6px 0;
+  color: var(--lavender-dark);
+  font-size: 16px;
+}
+
+.work-timer-hint {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  color: #555;
+}
+
+#work-timer-setup label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+#work-minutes {
+  width: 70px;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+#start-work-timer-btn, #stop-work-timer-btn {
+  background: var(--lavender-dark);
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  margin-left: 10px;
+}
+
+#work-timer-not-needed-btn {
+  background: white;
+  color: var(--lavender-dark);
+  border: 2px solid var(--lavender);
+  padding: 9px 17px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: bold;
+  margin-left: 10px;
+  transition: background 0.15s, color 0.15s;
+}
+
+#work-timer-not-needed-btn:hover {
+  background: var(--lavender-light);
+}
+
+#work-timer-show-btn {
+  background: var(--lavender-light);
+  color: var(--lavender-dark);
+  border: 2px dashed var(--lavender);
+  padding: 12px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: bold;
+  margin: 18px 0;
+  width: 100%;
+  text-align: center;
+}
+
+#work-timer-show-btn:hover {
+  background: var(--lavender);
+  color: white;
+}
+
+#work-timer-display {
+  font-size: 40px;
+  font-weight: bold;
+  text-align: center;
+  margin: 10px 0;
+  color: var(--lavender-dark);
+}
+
 #mute-music-btn {
   background: var(--lavender-dark);
   color: white;
