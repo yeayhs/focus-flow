@@ -1,4 +1,9 @@
 const STORAGE_KEY = 'homework-tracker-tasks';
+const SORT_KEY = 'focus-flow-sort';
+const WEEKLY_GOAL_KEY = 'focus-flow-weekly-goal';
+const CELEBRATION_KEY = 'focus-flow-celebration';
+let currentSort = localStorage.getItem(SORT_KEY) || 'due';
+let celebrationStyle = localStorage.getItem(CELEBRATION_KEY) || 'confetti';
 
 function showLightbox(src) {
   document.getElementById('lightbox-img').src = src;
@@ -237,6 +242,17 @@ function getSubjectBadge(subject) {
   return `<span class="subject-badge" style="background:${SUBJECT_COLORS[subject]}">${label}</span>`;
 }
 
+const PRIORITY_COLORS = { high: '#e0524a', medium: '#d98a1f', low: '#2bb84a' };
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+
+function getPriorityBadge(priority) {
+  if (!priority || !PRIORITY_COLORS[priority]) return '';
+  const label = priority.charAt(0).toUpperCase() + priority.slice(1);
+  return `<span class="priority-badge priority-${priority}">${label}</span>`;
+}
+
+const CELEBRATION_EMOJIS = { confetti: '🎉', stars: '⭐', fireworks: '🎆', sparkles: '✨' };
+
 // ---------- View switching ----------
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -317,6 +333,8 @@ document.getElementById('add-form').addEventListener('submit', e => {
   const noDueBtn = document.getElementById('no-due-btn');
   const dueDate = noDueBtn.classList.contains('active') ? null : (dueInput.value || null);
   const subject = document.getElementById('task-subject').value || null;
+  const priority = document.getElementById('task-priority').value || null;
+  const estimatedMinutes = parseInt(document.getElementById('task-estimated').value, 10) || null;
   if (!title) return;
 
   if (editingTaskId) {
@@ -326,6 +344,8 @@ document.getElementById('add-form').addEventListener('submit', e => {
       task.notes = notes;
       task.dueDate = dueDate;
       task.subject = subject;
+      task.priority = priority;
+      task.estimatedMinutes = estimatedMinutes;
       task.photos = pendingPhotos.slice();
       delete task.photo;
     }
@@ -337,8 +357,10 @@ document.getElementById('add-form').addEventListener('submit', e => {
       photos: pendingPhotos.slice(),
       dueDate,
       subject,
+      priority,
+      estimatedMinutes,
       order: Date.now(),
-      status: 'planned', // planned | active | done
+      status: 'planned',
       createdAt: Date.now(),
       completedAt: null
     });
@@ -356,6 +378,8 @@ function resetForm() {
   document.getElementById('task-due').value = '';
   document.getElementById('no-due-btn').classList.remove('active');
   document.getElementById('task-subject').value = '';
+  document.getElementById('task-priority').value = '';
+  document.getElementById('task-estimated').value = '';
   pendingPhotos = [];
   document.getElementById('task-photo').value = '';
   renderPhotoPreviewGallery();
@@ -372,6 +396,8 @@ function startEditTask(id) {
   document.getElementById('task-due').value = task.dueDate || '';
   document.getElementById('no-due-btn').classList.toggle('active', !task.dueDate);
   document.getElementById('task-subject').value = task.subject || '';
+  document.getElementById('task-priority').value = task.priority || '';
+  document.getElementById('task-estimated').value = task.estimatedMinutes || '';
   pendingPhotos = getTaskPhotos(task).slice();
   renderPhotoPreviewGallery();
   document.getElementById('submit-btn').textContent = 'Update Task';
@@ -403,13 +429,23 @@ let searchQuery = '';
 
 function sortPlanned(taskArr) {
   return taskArr.slice().sort((a, b) => {
-    if (a.dueDate && b.dueDate) {
-      const cmp = a.dueDate.localeCompare(b.dueDate);
-      if (cmp !== 0) return cmp;
-      return (a.order ?? a.createdAt) - (b.order ?? b.createdAt);
+    if (currentSort === 'priority') {
+      const pa = PRIORITY_ORDER[a.priority] ?? 3;
+      const pb = PRIORITY_ORDER[b.priority] ?? 3;
+      if (pa !== pb) return pa - pb;
+    } else if (currentSort === 'subject') {
+      const sa = (a.subject || 'zzz').toLowerCase();
+      const sb = (b.subject || 'zzz').toLowerCase();
+      if (sa !== sb) return sa.localeCompare(sb);
+    } else if (currentSort === 'added') {
+      return (a.createdAt || 0) - (b.createdAt || 0);
+    } else {
+      if (a.dueDate && b.dueDate) {
+        const cmp = a.dueDate.localeCompare(b.dueDate);
+        if (cmp !== 0) return cmp;
+      } else if (a.dueDate && !b.dueDate) return -1;
+      else if (!a.dueDate && b.dueDate) return 1;
     }
-    if (a.dueDate && !b.dueDate) return -1;
-    if (!a.dueDate && b.dueDate) return 1;
     return (a.order ?? a.createdAt) - (b.order ?? b.createdAt);
   });
 }
@@ -418,6 +454,7 @@ function createPlannedTaskCard(task, options = {}) {
   const li = document.createElement('li');
   li.className = 'task-card';
   li.dataset.id = task.id;
+  if (task.subject) li.dataset.subject = task.subject;
   const due = getDueDateInfo(task.dueDate);
   const thumbSrc = getTaskPhotos(task)[0];
 
@@ -429,8 +466,8 @@ function createPlannedTaskCard(task, options = {}) {
     ${options.draggable ? '<span class="drag-handle" title="Drag to reorder" aria-hidden="true">⠿</span>' : ''}
     ${thumbSrc ? `<img class="task-thumb" src="${thumbSrc}" alt="Photo for ${escapeHtml(task.title)}">` : ''}
     <div class="task-text">
-      <div class="task-title">${getSubjectBadge(task.subject)}${escapeHtml(task.title)}</div>
-      <div class="task-date ${due.className}">${due.text}</div>
+      <div class="task-title">${getPriorityBadge(task.priority)}${getSubjectBadge(task.subject)}${escapeHtml(task.title)}</div>
+      <div class="task-date ${due.className}">${due.text}${task.estimatedMinutes ? ` · Est. ${task.estimatedMinutes} min` : ''}</div>
     </div>
     <button class="edit-btn" title="Edit" aria-label="Edit ${escapeHtml(task.title)}">✏️</button>
     <button class="delete-btn" title="Delete" aria-label="Delete ${escapeHtml(task.title)}">🗑️</button>
@@ -515,6 +552,16 @@ function renderTodaySection() {
 document.getElementById('search-input').addEventListener('input', (e) => {
   searchQuery = e.target.value.trim().toLowerCase();
   renderPlanned();
+});
+
+document.querySelectorAll('.sort-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentSort = btn.dataset.sort;
+    localStorage.setItem(SORT_KEY, currentSort);
+    renderPlanned();
+  });
 });
 
 let dragSourceId = null;
@@ -753,12 +800,74 @@ document.getElementById('work-timer-show-btn').addEventListener('click', () => {
 });
 
 function showCelebration() {
-  const pop = document.createElement('div');
-  pop.className = 'celebrate-pop';
-  pop.textContent = '🎉';
-  document.body.appendChild(pop);
-  setTimeout(() => pop.remove(), 900);
+  if (celebrationStyle === 'fireworks') {
+    const sparks = ['💥', '✨', '🌟', '💫', '⭐'];
+    for (let i = 0; i < 6; i++) {
+      setTimeout(() => {
+        const pop = document.createElement('div');
+        pop.className = 'celebrate-pop';
+        pop.style.left = `${15 + Math.random() * 70}%`;
+        pop.style.top = `${10 + Math.random() * 70}%`;
+        pop.style.transform = 'none';
+        pop.textContent = sparks[Math.floor(Math.random() * sparks.length)];
+        document.body.appendChild(pop);
+        setTimeout(() => pop.remove(), 900);
+      }, i * 100);
+    }
+    return;
+  }
+  const emojiMap = {
+    confetti:  ['🎉', '🎊', '🎈', '⭐', '🎀'],
+    stars:     ['⭐', '🌟', '✨', '💛'],
+    sparkles:  ['✨', '💫', '🌟', '⚡']
+  };
+  const emojis = emojiMap[celebrationStyle] || ['🎉'];
+  for (let i = 0; i < 22; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'celebrate-rain';
+      el.textContent = emojis[i % emojis.length];
+      el.style.left = `${Math.random() * 93}%`;
+      el.style.fontSize = `${16 + Math.random() * 22}px`;
+      const dur = 1.5 + Math.random() * 1.2;
+      el.style.animationDuration = `${dur}s`;
+      el.style.animationDelay = '0s';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), (dur + 0.15) * 1000);
+    }, i * 65);
+  }
 }
+
+document.querySelectorAll('.mood-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const task = tasks.find(t => t.id === lastCompletedTaskId);
+    if (!task) return;
+    task.mood = btn.dataset.mood;
+    save();
+    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+});
+
+document.querySelectorAll('.celeb-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    celebrationStyle = btn.dataset.style;
+    localStorage.setItem(CELEBRATION_KEY, celebrationStyle);
+    document.querySelectorAll('.celeb-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    showCelebration();
+  });
+});
+
+document.getElementById('set-goal-btn').addEventListener('click', () => {
+  const val = parseInt(document.getElementById('goal-minutes').value, 10);
+  if (val > 0) {
+    localStorage.setItem(WEEKLY_GOAL_KEY, val.toString());
+  } else {
+    localStorage.removeItem(WEEKLY_GOAL_KEY);
+  }
+  renderWeeklyGoal();
+});
 
 document.getElementById('no-break-btn').addEventListener('click', () => {
   activeUiMode = 'task';
@@ -1318,6 +1427,78 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// ---------- Weekly goal ----------
+function renderWeeklyGoal() {
+  const goal = parseInt(localStorage.getItem(WEEKLY_GOAL_KEY), 10) || 0;
+  const input = document.getElementById('goal-minutes');
+  const progressDiv = document.getElementById('goal-progress');
+  if (!input) return;
+  if (goal) input.value = goal;
+
+  if (!goal) { progressDiv.classList.add('hidden'); return; }
+
+  const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const weekMinutes = tasks
+    .filter(t => t.status === 'done' && t.completedAt >= oneWeekAgo && t.timeSpentMinutes)
+    .reduce((sum, t) => sum + t.timeSpentMinutes, 0);
+
+  const pct = Math.min(100, Math.round((weekMinutes / goal) * 100));
+  const bar = document.getElementById('goal-bar');
+  const text = document.getElementById('goal-text');
+  bar.style.width = `${pct}%`;
+  bar.classList.toggle('goal-complete', weekMinutes >= goal);
+  text.textContent = weekMinutes >= goal
+    ? `🎉 Goal reached! ${weekMinutes} / ${goal} min this week`
+    : `${weekMinutes} / ${goal} min this week (${pct}%)`;
+  progressDiv.classList.remove('hidden');
+}
+
+// ---------- Weekly chart ----------
+function renderWeeklyChart() {
+  const container = document.getElementById('weekly-chart');
+  if (!container) return;
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayData = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0, 0, 0, 0);
+    const next = new Date(d); next.setDate(next.getDate() + 1);
+    const minutes = tasks
+      .filter(t => t.status === 'done' && t.completedAt >= d.getTime() && t.completedAt < next.getTime())
+      .reduce((sum, t) => sum + (t.timeSpentMinutes || 0), 0);
+    dayData.push({ label: DAYS[d.getDay()], minutes });
+  }
+  const maxMin = Math.max(...dayData.map(d => d.minutes), 1);
+  container.innerHTML = `<div class="weekly-chart-bars">${
+    dayData.map((d, idx) => {
+      const h = Math.round((d.minutes / maxMin) * 80);
+      return `<div class="weekly-bar-col">
+        <div class="weekly-bar-min">${d.minutes > 0 ? d.minutes + 'm' : ''}</div>
+        <div class="weekly-bar-wrap">
+          <div class="weekly-bar${idx === 6 ? ' today' : ''}" style="height:${h}px"></div>
+        </div>
+        <div class="weekly-bar-label">${d.label}</div>
+      </div>`;
+    }).join('')
+  }</div>`;
+}
+
+// ---------- Mood stats ----------
+function renderMoodStats(doneTasks) {
+  const section = document.getElementById('stats-mood-section');
+  const container = document.getElementById('stats-mood');
+  if (!section || !container) return;
+  const counts = { easy: 0, ok: 0, hard: 0 };
+  doneTasks.forEach(t => { if (t.mood && counts[t.mood] !== undefined) counts[t.mood]++; });
+  const total = counts.easy + counts.ok + counts.hard;
+  if (total === 0) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  container.innerHTML = `
+    <div class="mood-stat"><span>😊</span><span>${counts.easy} Easy</span></div>
+    <div class="mood-stat"><span>😐</span><span>${counts.ok} OK</span></div>
+    <div class="mood-stat"><span>😩</span><span>${counts.hard} Hard</span></div>
+  `;
+}
+
 // ---------- Stats ----------
 function dateKey(ts) {
   const d = new Date(ts);
@@ -1355,10 +1536,15 @@ function renderStats() {
 
   const streak = computeStreak(doneTasks);
 
+  const workMinutesThisWeek = tasks
+    .filter(t => t.status === 'done' && t.completedAt >= oneWeekAgo && t.timeSpentMinutes)
+    .reduce((sum, t) => sum + t.timeSpentMinutes, 0);
+
   const cards = [
     { icon: '✅', label: 'Completed this week', value: completedThisWeek },
+    { icon: '⏰', label: 'Work minutes this week', value: workMinutesThisWeek },
     { icon: '🏆', label: 'Total completed', value: doneTasks.length },
-    { icon: '☕', label: 'Break minutes this week', value: breakMinutesThisWeek },
+    { icon: '<span class="milk-icon">🥛<span class="cookie-icon">🍪</span></span>', label: 'Break minutes this week', value: breakMinutesThisWeek },
     { icon: '🔥', label: 'Day streak', value: streak },
     { icon: '📷', label: 'Photos taken', value: totalPhotos }
   ];
@@ -1372,6 +1558,9 @@ function renderStats() {
   `).join('');
 
   renderSubjectStats(doneTasks);
+  renderMoodStats(doneTasks);
+  renderWeeklyGoal();
+  renderWeeklyChart();
 }
 
 function estimateMinutes(task) {
@@ -1427,6 +1616,14 @@ document.addEventListener('keydown', (e) => {
       document.getElementById('detail-modal').classList.add('hidden');
     }
   }
+});
+
+// Initialize persisted sort + celebration button states
+document.querySelectorAll('.sort-btn').forEach(btn => {
+  btn.classList.toggle('active', btn.dataset.sort === currentSort);
+});
+document.querySelectorAll('.celeb-btn').forEach(btn => {
+  btn.classList.toggle('active', btn.dataset.style === celebrationStyle);
 });
 
 renderAll();

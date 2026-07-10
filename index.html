@@ -23,7 +23,7 @@
       <p id="planned-count" class="task-count"></p>
       <form id="add-form">
         <input id="task-title" type="text" placeholder="What's the homework?" required>
-        <textarea id="task-notes" placeholder="Details (optional) — e.g. pages, instructions..."></textarea>
+        <textarea id="task-notes" placeholder="Details (optional) — pages, instructions..."></textarea>
         <div class="due-date-row">
           <label for="task-due">Due date: <input id="task-due" type="date"></label>
           <button id="no-due-btn" type="button" class="no-due-btn">No Due Date</button>
@@ -36,6 +36,15 @@
           <option value="history">History</option>
           <option value="other">Other</option>
         </select>
+        <div class="priority-est-row">
+          <label>Priority: <select id="task-priority">
+            <option value="">None</option>
+            <option value="high">🔴 High</option>
+            <option value="medium">🟡 Medium</option>
+            <option value="low">🟢 Low</option>
+          </select></label>
+          <label>Est. time (min): <input id="task-estimated" type="number" min="1" placeholder="30"></label>
+        </div>
         <label id="photo-label" for="task-photo">📷 Add Photos (up to 10)</label>
         <input id="task-photo" type="file" accept="image/*" capture="environment" multiple class="hidden">
         <div id="photo-preview-gallery" class="photo-gallery"></div>
@@ -48,6 +57,13 @@
         <ul id="today-list" class="task-list"></ul>
       </div>
 
+      <div class="sort-row">
+        <span class="sort-label">Sort:</span>
+        <button class="sort-btn active" data-sort="due">Due Date</button>
+        <button class="sort-btn" data-sort="priority">Priority</button>
+        <button class="sort-btn" data-sort="subject">Subject</button>
+        <button class="sort-btn" data-sort="added">Added</button>
+      </div>
       <input id="search-input" type="text" placeholder="🔍 Search planned tasks...">
       <ul id="planned-list" class="task-list"></ul>
     </section>
@@ -98,6 +114,14 @@
           <input id="completed-photo-input" type="file" accept="image/*" capture="environment" multiple class="hidden">
         </div>
 
+        <div class="mood-section">
+          <h3>How was that session?</h3>
+          <div class="mood-buttons">
+            <button class="mood-btn" data-mood="hard">😩 Hard</button>
+            <button class="mood-btn" data-mood="ok">😐 OK</button>
+            <button class="mood-btn" data-mood="easy">😊 Easy</button>
+          </div>
+        </div>
         <button id="no-break-btn">No Break</button>
         <div class="break-setup">
           <label>Break length (minutes): <input id="break-minutes" type="number" min="1" value="10"></label>
@@ -118,7 +142,7 @@
     <section id="view-history" class="view">
       <p id="export-reminder" class="export-reminder hidden"></p>
 
-      <button id="log-past-btn" type="button">➕ Log a Past Task</button>
+      <button id="log-past-btn" type="button"><span class="log-plus">+</span> Log a Past Task</button>
       <form id="log-past-form" class="hidden">
         <input id="past-title" type="text" placeholder="What did you work on?" required>
         <select id="past-subject">
@@ -146,7 +170,7 @@
           <label id="past-time-label">Time: <input id="past-time" type="time"></label>
           <button type="button" id="past-time-unsure-btn" class="no-due-btn">Not Sure</button>
         </div>
-        <label>Minutes spent: <input id="past-minutes" type="number" min="1" placeholder="e.g. 20" required></label>
+        <label>Minutes spent: <input id="past-minutes" type="number" min="1" placeholder="20" required></label>
         <label id="past-photo-label" for="past-photo-input">📷 Add Photos (up to 10)</label>
         <input id="past-photo-input" type="file" accept="image/*" capture="environment" multiple class="hidden">
         <div id="past-photo-preview-gallery" class="photo-gallery"></div>
@@ -169,8 +193,37 @@
     <!-- STATS VIEW -->
     <section id="view-stats" class="view">
       <div id="stats-grid" class="stats-grid"></div>
+
+      <h3 class="section-heading-aqua">🎯 Weekly Goal</h3>
+      <div class="weekly-goal-section">
+        <div class="goal-setup">
+          <label>Goal: <input id="goal-minutes" type="number" min="1" placeholder="150"> min/week</label>
+          <button id="set-goal-btn" type="button">Set Goal</button>
+        </div>
+        <div id="goal-progress" class="hidden">
+          <div class="goal-bar-track"><div id="goal-bar" class="goal-bar"></div></div>
+          <p id="goal-text" class="goal-text"></p>
+        </div>
+      </div>
+
+      <h3 class="section-heading-aqua">📅 This Week</h3>
+      <div id="weekly-chart" class="weekly-chart"></div>
+
       <h3 class="section-heading-aqua">📚 By Subject</h3>
       <div id="stats-subjects"></div>
+
+      <div id="stats-mood-section" class="hidden">
+        <h3 class="section-heading-aqua">😊 Session Mood</h3>
+        <div id="stats-mood" class="mood-stats-row"></div>
+      </div>
+
+      <h3 class="section-heading-aqua">🎉 Celebration Style</h3>
+      <div class="celebration-btns">
+        <button class="celeb-btn" data-style="confetti">🎉 Confetti</button>
+        <button class="celeb-btn" data-style="stars">⭐ Stars</button>
+        <button class="celeb-btn" data-style="fireworks">🎆 Fireworks</button>
+        <button class="celeb-btn" data-style="sparkles">✨ Sparkles</button>
+      </div>
     </section>
   </main>
 
